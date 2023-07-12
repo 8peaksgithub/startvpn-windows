@@ -1,0 +1,6 @@
+prefix=C:/Test/build-release/external
+includedir=${prefix}/include
+
+Name: spdlog
+Description: Super fast C++ logging library. 
+Version: 1.3.1

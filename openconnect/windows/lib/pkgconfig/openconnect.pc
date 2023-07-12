@@ -1,0 +1,13 @@
+prefix=/mingw64
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+
+Name: openconnect
+Description: OpenConnect VPN client
+Version: 8.02
+Requires.private: libproxy-1.0 zlib liblz4 gnutls p11-kit-1 stoken   libxml-2.0
+Libs: -L${libdir} -lopenconnect
+Libs.private: -lintl -lwinscard 
+Cflags: -I${includedir}
