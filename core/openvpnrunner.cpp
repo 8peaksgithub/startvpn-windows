@@ -35,6 +35,16 @@ OpenVpnRunner::~OpenVpnRunner()
     if (m_managementConnection && m_managementConnection->isOpen())
         m_managementConnection->abort();
     m_process->close();
+    
+    // Securely clear sensitive credentials from memory
+    if(!m_username.isEmpty()) {
+        m_username.fill('\0');
+        m_username.clear();
+    }
+    if(!m_password.isEmpty()) {
+        m_password.fill('\0');
+        m_password.clear();
+    }
 }
 
 bool OpenVpnRunner::connect(const QString &config, const QString &username, const QString &password)
@@ -87,6 +97,15 @@ bool OpenVpnRunner::connect(const QString &config, const QString &username, cons
         qCritical() << "Management Listener Error:" << m_managementServer->errorString();
         return false;
     }
+    
+    // Set connection timeout
+    QTimer::singleShot(30000, this, [this]() {
+        if(m_process->state() == QProcess::Running && !m_managementConnection) {
+            qCritical() << "OpenVPN connection timeout - no management connection established";
+            m_disconnectReason = tr("Connection timeout. Server may be unreachable.");
+            disconnect();
+        }
+    });
 
     QStringList arguments;
 #if defined(Q_OS_LINUX)
@@ -135,7 +154,11 @@ bool OpenVpnRunner::connect(const QString &config, const QString &username, cons
 #if defined(Q_OS_LINUX)
     m_process->start("/usr/bin/pkexec", arguments, QIODevice::ReadOnly);
 #elif defined(Q_OS_WIN)
-    m_process->start(QDir(qApp->applicationDirPath()).filePath("openvpn.exe"), arguments, QIODevice::ReadOnly);
+    QString openvpnPath = QDir(qApp->applicationDirPath()).filePath("openvpn/win/bin/openvpn.exe");
+    if (!QFile::exists(openvpnPath)) {
+        openvpnPath = QDir(qApp->applicationDirPath()).filePath("openvpn.exe");
+    }
+    m_process->start(openvpnPath, arguments, QIODevice::ReadOnly);
 #elif defined(Q_OS_MACOS)
     m_process->start(QDir(qApp->applicationDirPath()).filePath("openvpn-launcher"), arguments, QIODevice::ReadOnly);
 #else

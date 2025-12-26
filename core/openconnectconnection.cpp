@@ -113,6 +113,12 @@ void OpenConnectConnection::setPassword(const QString &password)
 
 OpenConnectConnection::ConnectionError OpenConnectConnection::connect()
 {
+    // Validate server type
+    if(m_server_type != 1 && m_server_type != 2){
+        Logger::instance().addMessage(QString("Unsupported server type: %1. Only OpenVPN (type 1) and OpenConnect (type 2) are supported.").arg(m_server_type));
+        return SERVER_INVALID;
+    }
+    
     if(m_server_type == 2){
         // OpenConnect
         qDebug() << "Connecting Via Open Connect";
@@ -197,6 +203,16 @@ OpenConnectConnection::ConnectionError OpenConnectConnection::connect()
 
 void OpenConnectConnection::disconnect()
 {
+    // Clear sensitive data from memory
+    if(!m_username.isEmpty()) {
+        m_username.fill('\0');
+        m_username.clear();
+    }
+    if(!m_password.isEmpty()) {
+        m_password.fill('\0');
+        m_password.clear();
+    }
+    
     if(m_server_type == 2){
         // Open Connect
         qDebug() << "Disconnecting Open Connect";

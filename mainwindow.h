@@ -90,10 +90,11 @@ private:
     QNetworkAccessManager *manager;
     QString userEmail;
     QTimer* timer;
+    QTimer* serverRefreshTimer;
     QElapsedTimer *eltimer;
     int Time = 26;
     bool is_Login = false;
-    QString base_url = "http://89.117.48.52/startvpn_api/public/app-api-v1";
+    QString base_url = "https://api.vpnstart.net/startvpn_api/public/app-api-v1";
     UserInformation *info = new UserInformation();
 
 signals:
@@ -102,6 +103,7 @@ signals:
 public:
     static QString currentTimeZone();
     void saveServer(QByteArray  &res, QString &username, QString &password);
+    void refreshServerList();
     void createServerTreeWidget();
     void addRoot(QString &name,QString &child,int &code,bool &is_lock);
     void addChildServer(QTreeWidgetItem *parent,QString name, bool is_lock);

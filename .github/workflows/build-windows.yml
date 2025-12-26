@@ -1,0 +1,79 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.6.1'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_mingw'
+        modules: 'qtnetworkauth'
+        cache: true
+        
+    - name: Create build directory
+      run: mkdir build
+      
+    - name: Configure with qmake
+      run: |
+        cd build
+        qmake ../StartVPN.pro -spec win32-g++ "CONFIG+=release"
+      
+    - name: Build
+      run: |
+        cd build
+        mingw32-make -j4
+        
+    - name: Package application
+      run: |
+        mkdir deploy
+        mkdir deploy/StartVPN
+        copy build\release\Start.exe deploy\StartVPN\StartVPN.exe
+        
+        # Copy OpenVPN binaries
+        xcopy /E /I openvpn\win\bin deploy\StartVPN\openvpn\win\bin
+        
+        # Deploy Qt dependencies
+        cd deploy\StartVPN
+        windeployqt --release --no-translations StartVPN.exe
+        
+    - name: Create version info
+      run: |
+        echo "Build Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" > deploy\StartVPN\VERSION.txt
+        echo "Commit: ${{ github.sha }}" >> deploy\StartVPN\VERSION.txt
+        echo "Branch: ${{ github.ref_name }}" >> deploy\StartVPN\VERSION.txt
+        
+    - name: Create ZIP archive
+      run: |
+        cd deploy
+        Compress-Archive -Path StartVPN -DestinationPath StartVPN-Windows-x64.zip
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StartVPN-Windows-x64
+        path: deploy/StartVPN-Windows-x64.zip
+        retention-days: 30
+        
+    - name: Create Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: deploy/StartVPN-Windows-x64.zip
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

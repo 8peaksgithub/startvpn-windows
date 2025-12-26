@@ -21,6 +21,11 @@
 #include <QSize>
 #include <core/openconnectconnection.h>
 
+#ifndef QT_NO_SSL
+#include <QSslConfiguration>
+#include <QSslSocket>
+#endif
+
 #include "common/common.h"
 #include <QPainter>
 #include <QStyleOption>
@@ -137,7 +142,9 @@ MainWindow::MainWindow(QWidget *parent)
         int activeServerIndex = Start::Common::globalConfig()->activeServerIndex();
         setSelectedLocation(activeServerIndex);
         ui->stackedWidget->setCurrentIndex(2);
-
+        
+        // Refresh server list in background on app start
+        QTimer::singleShot(2000, this, &MainWindow::refreshServerList);
 
     }else{
         ui->stackedWidget->setCurrentIndex(0);
@@ -334,6 +341,13 @@ void MainWindow::btnEmailVerification_clicked() // regitation verifaction & emai
 
     QNetworkRequest request(QUrl(base_url+"/sign-up"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    request.setTransferTimeout(15000); // 15 second timeout
+    #ifndef QT_NO_SSL
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    sslConfig.setPeerVerifyMode(QSslSocket::VerifyPeer);
+    request.setSslConfiguration(sslConfig);
+    #endif
     manager = new QNetworkAccessManager;
     auto reply = manager->post(request, requestData.query(QUrl::FullyEncoded).toUtf8());
 
@@ -441,6 +455,13 @@ void MainWindow::btnLogin_clicked()
     QNetworkRequest request;
     request.setUrl(QUrl(base_url+"/login"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    request.setTransferTimeout(15000); // 15 second timeout
+    #ifndef QT_NO_SSL
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    sslConfig.setPeerVerifyMode(QSslSocket::VerifyPeer);
+    request.setSslConfiguration(sslConfig);
+    #endif
     manager = new QNetworkAccessManager;
     auto greply = manager->get(request);
     if(greply->error() != QNetworkReply::NoError)
@@ -527,6 +548,30 @@ void MainWindow::btnConnect_clicked()
     QString config =  info->getCurrentConfig();
     int type =  info->getCurrentType();
     QString ip =  info->getCurrentIP();
+    
+    // Check if server data is valid
+    if(ip.isEmpty() || ip.isNull()){
+        QString msg = "No server selected. Please select a server from the list.";
+        customMessage(msg);
+        ui->btnConnect->setEnabled(true);
+        return;
+    }
+    
+    if(config.isEmpty() && type == 1){
+        QString msg = "Invalid server configuration. Please select another server.";
+        customMessage(msg);
+        ui->btnConnect->setEnabled(true);
+        return;
+    }
+    
+    // Validate server type
+    if(type != 1 && type != 2){
+        QString msg = "Unsupported server protocol. Please contact support.";
+        customMessage(msg);
+        ui->btnConnect->setEnabled(true);
+        return;
+    }
+    
     if(ip.contains(":"))
         ip =  ip.split(":").first();
     ui->lblConnectIP->setText("Protected IP: "+ip);
@@ -534,6 +579,7 @@ void MainWindow::btnConnect_clicked()
     if(ip=="8.8.8.8"){
         QString msg = "Can't Connect, Try Premium";
         customMessage(msg);
+        ui->btnConnect->setEnabled(true);
     }else{
         setipID(ip_id);
         setConfig(config);
@@ -676,6 +722,68 @@ void MainWindow::on_btnResendCode_clicked()
 }
 
 
+void MainWindow::refreshServerList()
+{
+    qDebug() << "Refreshing server list from API...";
+    
+    QString username = Start::Common::globalConfig()->cachedUsername();
+    QString password = Start::Common::globalConfig()->cachedPassword();
+    
+    if(username.isEmpty() || password.isEmpty()){
+        qDebug() << "Cannot refresh: No credentials available";
+        return;
+    }
+    
+    QUrlQuery requestData;
+    requestData.addQueryItem("username", username);
+    requestData.addQueryItem("pass", password);
+    requestData.addQueryItem("udid", QSysInfo::machineUniqueId());
+    requestData.addQueryItem("device_type", "3");
+    
+    QNetworkRequest request;
+    request.setUrl(QUrl(base_url + "/login"));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    request.setTransferTimeout(10000); // 10 second timeout for background refresh
+    #ifndef QT_NO_SSL
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    sslConfig.setPeerVerifyMode(QSslSocket::VerifyPeer);
+    request.setSslConfiguration(sslConfig);
+    #endif
+    
+    QNetworkAccessManager* refreshManager = new QNetworkAccessManager(this);
+    auto reply = refreshManager->post(request, requestData.query(QUrl::FullyEncoded).toUtf8());
+    
+    connect(reply, &QNetworkReply::finished, this, [=]() {
+        QByteArray response = reply->readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(response);
+        
+        if(!doc.isNull() && doc.isObject()){
+            QJsonObject rootObject = doc.object();
+            if(rootObject.value("response_code").toInt() == 1){
+                // Update server list
+                QJsonDocument array;
+                array.setArray(rootObject.value("ip_bundle").toArray());
+                QSettings settings("startvpn", "Kolpolok Limited");
+                settings.setValue("IPBundle", array.toJson());
+                info->setIPBundle(array.toJson());
+                
+                // Refresh the UI
+                ui->treeWidget->clear();
+                map.clear();
+                createServerTreeWidget();
+                
+                qDebug() << "Server list refreshed successfully";
+            } else {
+                qDebug() << "Server refresh failed:" << rootObject.value("message").toString();
+            }
+        }
+        
+        reply->deleteLater();
+        refreshManager->deleteLater();
+    });
+}
+
 void MainWindow::saveServer(QByteArray &res ,QString &username, QString &password)
 {
     QJsonDocument doc = QJsonDocument::fromJson(res);
@@ -741,39 +849,26 @@ void MainWindow::createServerTreeWidget()
     QJsonDocument doc = QJsonDocument::fromJson(bundils.toUtf8());
     bool TypeOfUser = true;
     QJsonArray serverArray = doc.array();
+    
+    // First, determine user type by checking first server's bundle
+    foreach (QJsonValue server  , serverArray)
+    {
+       auto obj = server.toObject();
+       QString bundleName =  obj.value("bundleName").toString();
+       if(bundleName=="Free Bundle"){
+           ui->lblTypeOfUser->setText("Free User");
+       }else{
+           ui->lblTypeOfUser->setText("Premium User");
+       }
+       ui->lblTypeOfUser->setAlignment(Qt::AlignCenter);
+       break; // Only need to check first server
+    }
+    
+    // Now create bundles with servers
     createFreeBundil();
     createHighspeedBudile();
     createStreamingBundil();
     createGamingBundil();
-    foreach (QJsonValue server  , serverArray)
-    {
-       auto obj = server.toObject();
-       QString ipName =  obj.value("ipName").toString();
-       QString country =  obj.value("countryName").toString();
-       QString code = obj.value("countryCode").toString();
-       QString ip = obj.value("ip").toString();
-       int type = obj.value("type").toInt();
-       int countryCode = code.toInt();
-       bool is_lock = false;
-       if(TypeOfUser){
-           QString bundleName =  obj.value("bundleName").toString();
-           if(bundleName=="Free Bundle"){
-               ui->lblTypeOfUser->setText("Free User");
-           }else{
-               ui->lblTypeOfUser->setText("Premium User");
-           }
-           ui->lblTypeOfUser->setAlignment(Qt::AlignCenter);
-
-       }
-       if(ip=="8.8.8.8"){
-           is_lock = true;
-       }
-       qDebug()<<"before type::"<<type;
-       if(type==1){
-           addRoot(country,ipName,countryCode,is_lock);
-       }
-
-    }
 
 }
 
@@ -1017,6 +1112,19 @@ void MainWindow::onStatusChanged(Start::OpenConnectConnection::Status status)
             m_scheduleConnect = false;
             QTimer::singleShot(0,this,&MainWindow::OnConnection);
         }
+        else if(info->isConnected)
+        {
+            // Unexpected disconnection - attempt auto-reconnect after 3 seconds
+            info->isConnected = false;
+            qDebug() << "Unexpected disconnection detected. Auto-reconnecting in 3 seconds...";
+            ui->lbldefultCountry->setText("Reconnecting...");
+            QTimer::singleShot(3000, this, [this]() {
+                if(m_state == 0) { // Still disconnected
+                    qDebug() << "Attempting auto-reconnect...";
+                    OnConnection();
+                }
+            });
+        }
         update();
     }
     if(opcState == Start::OpenConnectConnection::CONNECTED)
@@ -1030,6 +1138,9 @@ void MainWindow::onStatusChanged(Start::OpenConnectConnection::Status status)
         setSelectedLocation(activeServerIndex);
         ui->stackedWidget_2->setCurrentIndex(2);
         info->loadIpBundle();
+        
+        // Refresh server list in background after connection
+        QTimer::singleShot(5000, this, &MainWindow::refreshServerList);
 
     }
 }
@@ -1105,33 +1216,46 @@ void MainWindow::createBundil(QString name, QString key,int countryCode,QString 
     QJsonDocument doc = QJsonDocument::fromJson(bundils.toUtf8());
     bool TypeOfUser = true;
     QJsonArray serverArray = doc.array();
+    
+    bool bundleHeaderAdded = false;
+    
     foreach (QJsonValue server  , serverArray)
     {
        auto obj = server.toObject();
        QString ipName =  obj.value("ipName").toString();
        QString ip = obj.value("ip").toString();
+       QString countryName =  obj.value("countryName").toString();
+       QString code = obj.value("countryCode").toString();
+       int serverCountryCode = code.toInt();
        int type = obj.value("type").toInt();
        bool is_lock = false;
        int is_value = obj.value(key).toInt();
+       
+       // Check if this is a Free user trying to access premium content
        if(TypeOfUser){
            QString bundleName =  obj.value("bundleName").toString();
            if(bundleName!="Free Bundle"){
                 if(name=="Free")
                     return;
            }
-           if(is_value)
-                addRoot(country,nameIP,countryCode,is_lock);
            TypeOfUser = false;
        }
+       
        if(ip=="8.8.8.8"){
            is_lock = true;
        }
-       if(type==1){
-           if(is_value){
-                if(country.contains(text.toUpper(),Qt::CaseInsensitive) || ipName.contains(text.toUpper(),Qt::CaseInsensitive))
-                    addRoot(country,ipName,countryCode,is_lock);
+       
+       if(type==1 && is_value){
+            // Check if we should add this server based on search text
+            if(text.isEmpty() || countryName.contains(text, Qt::CaseInsensitive) || ipName.contains(text, Qt::CaseInsensitive)){
+                // Add bundle header if not added yet
+                if(!bundleHeaderAdded){
+                    addRoot(country, nameIP, countryCode, is_lock);
+                    bundleHeaderAdded = true;
+                }
+                // Add the actual server
+                addRoot(countryName, ipName, serverCountryCode, is_lock);
             }
-
         }
     }
 }
@@ -1354,8 +1478,15 @@ void MainWindow::btnUpgradeNow_clicked()
     Start::Common::globalConfig()->load();
     QString userEmail = Start::Common::globalConfig()->cachedUsername();
     QString password = Start::Common::globalConfig()->cachedPassword();
+    
+    // Try HTTPS first, fallback to HTTP if SSL issues
     QString url = "https://vpnstart.net/remotelogin?id="+userEmail.toUtf8().toBase64()+"&token="+password.toUtf8().toBase64();
-    QDesktopServices::openUrl(QUrl(url, QUrl::TolerantMode));
+    
+    bool opened = QDesktopServices::openUrl(QUrl(url, QUrl::TolerantMode));
+    if(!opened) {
+        QString msg = "Unable to open payment website. Please visit vpnstart.net manually.";
+        messageBox(msg);
+    }
 }
 
 void MainWindow::loadTray()
@@ -1474,7 +1605,13 @@ void MainWindow::on_btnUpgradeNow_2_clicked()
     Start::Common::globalConfig()->load();
     QString userEmail = Start::Common::globalConfig()->cachedUsername();
     QString password = Start::Common::globalConfig()->cachedPassword();
+    
     QString url = "https://vpnstart.net/remotelogin?id="+userEmail.toUtf8().toBase64()+"&token="+password.toUtf8().toBase64();
-    QDesktopServices::openUrl(QUrl(url, QUrl::TolerantMode));
+    
+    bool opened = QDesktopServices::openUrl(QUrl(url, QUrl::TolerantMode));
+    if(!opened) {
+        QString msg = "Unable to open payment website. Please visit vpnstart.net manually.";
+        messageBox(msg);
+    }
 }
 
