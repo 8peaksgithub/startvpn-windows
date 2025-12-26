@@ -40,7 +40,6 @@
 #include <QMovie>
 #include <QMap>
 #include <QClipboard>
-#include <QRegExp>
 
 #define IDENTITY_ROLE Qt::UserRole + 1
 
