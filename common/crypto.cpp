@@ -85,7 +85,7 @@ QString encodeString(QString string, QString key)
 
     for(auto i = 0; i < string.length(); i++)
     {
-        encryptedString.append(string.at(i).toLatin1() ^ key.at(i % key.length()).toLatin1());
+        encryptedString.append(QChar(string.at(i).toLatin1() ^ key.at(i % key.length()).toLatin1()));
     }
 
     encodedString = encryptedString.toUtf8().toBase64();
@@ -100,7 +100,7 @@ QString decodeString(QString encodedString, QString key)
     QString decryptedString;
     for(auto i = 0; i < decodedbytes.length(); i++)
     {
-        decryptedString.append(decodedbytes.at(i) ^ key.at(i % key.length()).toLatin1());
+        decryptedString.append(QChar(decodedbytes.at(i) ^ key.at(i % key.length()).toLatin1()));
     }
 
     return decryptedString;
