@@ -106,7 +106,7 @@ int Key::data_export(QByteArray& data)
     data.clear();
     if (this->url.isEmpty() == false) {
         /* export the URL */
-        data.append(this->url);
+        data.append(this->url.toUtf8());
         return 0;
     }
 
