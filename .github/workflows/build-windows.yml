@@ -23,13 +23,33 @@ jobs:
         target: 'desktop'
         arch: 'win64_mingw'
         modules: 'qtnetworkauth'
+        tools: 'tools_mingw90'
         cache: true
         
     - name: Setup MinGW
       run: |
-        $env:Path = "$env:RUNNER_WORKSPACE\Qt\6.6.1\mingw_64\bin;$env:RUNNER_WORKSPACE\Qt\Tools\mingw1120_64\bin;$env:Path"
-        echo "$env:RUNNER_WORKSPACE\Qt\6.6.1\mingw_64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        echo "$env:RUNNER_WORKSPACE\Qt\Tools\mingw1120_64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        # Find MinGW installation
+        $qtPath = "$env:RUNNER_WORKSPACE\Qt"
+        Write-Host "Qt Path: $qtPath"
+        Get-ChildItem -Path $qtPath -Recurse -Filter "g++.exe" | ForEach-Object { Write-Host "Found: $($_.FullName)" }
+        
+        # Add Qt bin and MinGW to PATH
+        $mingwPath = "$qtPath\Tools\mingw1120_64\bin"
+        $qtBinPath = "$qtPath\6.6.1\mingw_64\bin"
+        
+        if (Test-Path $mingwPath) {
+          Write-Host "Adding MinGW path: $mingwPath"
+          echo "$mingwPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        }
+        
+        if (Test-Path $qtBinPath) {
+          Write-Host "Adding Qt bin path: $qtBinPath"
+          echo "$qtBinPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        }
+        
+        # Verify g++ is accessible
+        $env:Path = "$mingwPath;$qtBinPath;$env:Path"
+        g++ --version
         
     - name: Create build directory
       run: mkdir build
