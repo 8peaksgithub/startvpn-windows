@@ -70,27 +70,13 @@ jobs:
         mkdir deploy/StartVPN
         copy build\release\Start.exe deploy\StartVPN\StartVPN.exe
         
-        # Copy MinGW runtime DLLs (required for Qt 6)
-        Write-Host "Copying MinGW runtime DLLs..."
-        $mingwBin = "$env:RUNNER_WORKSPACE\Qt\Tools\mingw1120_64\bin"
-        if (Test-Path "$mingwBin\libstdc++-6.dll") {
-          copy "$mingwBin\libstdc++-6.dll" deploy\StartVPN\ -Verbose
-          copy "$mingwBin\libgcc_s_seh-1.dll" deploy\StartVPN\ -Verbose
-          copy "$mingwBin\libwinpthread-1.dll" deploy\StartVPN\ -Verbose
-        } else {
-          Write-Host "MinGW bin not found at: $mingwBin"
-          Write-Host "Searching for MinGW DLLs..."
-          Get-ChildItem -Path "$env:RUNNER_WORKSPACE\Qt" -Filter "libstdc++-6.dll" -Recurse | Select-Object -First 1 | ForEach-Object {
-            Write-Host "Found at: $($_.DirectoryName)"
-            copy "$($_.DirectoryName)\libstdc++-6.dll" deploy\StartVPN\
-            copy "$($_.DirectoryName)\libgcc_s_seh-1.dll" deploy\StartVPN\
-            copy "$($_.DirectoryName)\libwinpthread-1.dll" deploy\StartVPN\
-          }
-        }
-        
-        # Copy OpenConnect/GnuTLS DLLs
+        # Copy OpenConnect/GnuTLS DLLs (excluding MinGW runtime DLLs to avoid conflicts)
         Write-Host "Copying OpenConnect/GnuTLS DLLs..."
-        copy openconnect\windows\lib\*.dll deploy\StartVPN\ -Verbose
+        Get-ChildItem openconnect\windows\lib\*.dll | Where-Object { 
+          $_.Name -notmatch 'libstdc\+\+-6\.dll|libgcc_s_seh-1\.dll|libwinpthread-1\.dll' 
+        } | ForEach-Object {
+          copy $_.FullName deploy\StartVPN\ -Verbose
+        }
         
         # Copy OpenVPN binaries
         Write-Host "Copying OpenVPN binaries..."
@@ -100,7 +86,7 @@ jobs:
         Write-Host "`nFiles in deploy/StartVPN before windeployqt:"
         Get-ChildItem deploy\StartVPN\*.dll | Select-Object Name
         
-        # Deploy Qt dependencies
+        # Deploy Qt dependencies (this will add the correct MinGW runtime DLLs)
         cd deploy\StartVPN
         windeployqt --release --no-translations StartVPN.exe
         
