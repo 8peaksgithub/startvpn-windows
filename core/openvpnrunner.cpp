@@ -72,7 +72,7 @@ bool OpenVpnRunner::connect(const QString &config, const QString &username, cons
     }
     m_configFile->close();
 
-    m_process->setReadChannelMode(QProcess::MergedChannels);
+    m_process->setProcessChannelMode(QProcess::MergedChannels);
 
     QObject::connect(m_process, static_cast<void(QProcess::*)(int, QProcess::ExitStatus)>(&QProcess::finished), this, [=](int, QProcess::ExitStatus) {
         if (!m_hasDisconnected) {
