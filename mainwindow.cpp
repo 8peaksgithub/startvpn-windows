@@ -476,7 +476,19 @@ void MainWindow::btnLogin_clicked()
     movie->stop();
     ui->btnLoginLoder->setVisible(false);
     ui->btnLogin->setDisabled(false);
+    
+    // Check for network errors
+    if(reply->error() != QNetworkReply::NoError) {
+        QString errorMsg = QString("Network Error: %1\nAPI: %2").arg(reply->errorString()).arg(base_url + "/login");
+        qDebug() << "Login failed with network error:" << reply->error() << errorMsg;
+        messageBox(errorMsg);
+        reply->deleteLater();
+        manager->deleteLater();
+        return;
+    }
+    
     QByteArray respone= reply->readAll();
+    qDebug() << "Login API Response:" << respone;
 
     QJsonDocument doc = QJsonDocument::fromJson(respone);
     auto rootObject = doc.object();
@@ -491,8 +503,14 @@ void MainWindow::btnLogin_clicked()
     }
    else{
       QString msg = rootObject.value("message").toString();
+      if(msg.isEmpty()) {
+          msg = "Login failed. Please check your credentials and try again.";
+      }
       messageBox(msg);
     }
+    
+    reply->deleteLater();
+    manager->deleteLater();
 
 }
 
@@ -723,7 +741,7 @@ void MainWindow::on_btnResendCode_clicked()
 
 void MainWindow::refreshServerList()
 {
-    qDebug() << "Refreshing server list from API...";
+    qDebug() << "Refreshing server list from API using /get-vpn-server-data...";
     
     QString username = Start::Common::globalConfig()->cachedUsername();
     QString password = Start::Common::globalConfig()->cachedPassword();
@@ -740,7 +758,7 @@ void MainWindow::refreshServerList()
     requestData.addQueryItem("device_type", "3");
     
     QNetworkRequest request;
-    request.setUrl(QUrl(base_url + "/login"));
+    request.setUrl(QUrl(base_url + "/get-vpn-server-data"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     request.setTransferTimeout(10000); // 10 second timeout for background refresh
@@ -772,7 +790,7 @@ void MainWindow::refreshServerList()
                 map.clear();
                 createServerTreeWidget();
                 
-                qDebug() << "Server list refreshed successfully";
+                qDebug() << "Server list refreshed successfully from /get-vpn-server-data";
             } else {
                 qDebug() << "Server refresh failed:" << rootObject.value("message").toString();
             }
