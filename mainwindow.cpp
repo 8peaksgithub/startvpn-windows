@@ -340,7 +340,7 @@ void MainWindow::btnEmailVerification_clicked() // regitation verifaction & emai
 
     QNetworkRequest request(QUrl(base_url+"/sign-up"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     request.setTransferTimeout(15000); // 15 second timeout
     #ifndef QT_NO_SSL
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
@@ -454,7 +454,7 @@ void MainWindow::btnLogin_clicked()
     QNetworkRequest request;
     request.setUrl(QUrl(base_url+"/login"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     request.setTransferTimeout(15000); // 15 second timeout
     #ifndef QT_NO_SSL
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
@@ -742,7 +742,7 @@ void MainWindow::refreshServerList()
     QNetworkRequest request;
     request.setUrl(QUrl(base_url + "/login"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     request.setTransferTimeout(10000); // 10 second timeout for background refresh
     #ifndef QT_NO_SSL
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
