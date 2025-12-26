@@ -255,8 +255,8 @@ void OpenConnectApi::setupTunDevice(void *privdata)
     OpenConnectConnection* vpn = static_cast<OpenConnectConnection*>(privdata);
 
     QByteArray vpncScriptFullPath;
-    vpncScriptFullPath.append(QCoreApplication::applicationDirPath());
-    vpncScriptFullPath.append(QDir::separator());
+    vpncScriptFullPath.append(QCoreApplication::applicationDirPath().toUtf8());
+    vpncScriptFullPath.append(QString(QDir::separator()).toUtf8());
     vpncScriptFullPath.append(DEFAULT_VPNC_SCRIPT);
     int ret = openconnect_setup_tun_device(vpn->vpninfo, vpncScriptFullPath.constData(), nullptr);
     if (ret != 0) {
