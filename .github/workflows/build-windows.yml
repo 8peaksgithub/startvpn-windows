@@ -70,6 +70,9 @@ jobs:
         mkdir deploy/StartVPN
         copy build\release\Start.exe deploy\StartVPN\StartVPN.exe
         
+        # Copy OpenConnect/GnuTLS DLLs
+        copy openconnect\windows\lib\*.dll deploy\StartVPN\
+        
         # Copy OpenVPN binaries
         xcopy /E /I openvpn\win\bin deploy\StartVPN\openvpn\win\bin
         
