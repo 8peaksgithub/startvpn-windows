@@ -94,7 +94,7 @@ private:
     QElapsedTimer *eltimer;
     int Time = 26;
     bool is_Login = false;
-    QString base_url = "https://api.vpnstart.net/app-api-v1";
+    QString base_url = "https://vpnstart.net/startvpn_api/app-api-v1";
     UserInformation *info = new UserInformation();
 
 signals:
