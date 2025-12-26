@@ -111,7 +111,7 @@ void Config::parseFavourites(QString favouriteString)
 {
     m_favourites.clear();
 
-    auto list = favouriteString.split(":", QString::SkipEmptyParts);
+    auto list = favouriteString.split(":", Qt::SkipEmptyParts);
 
     for(auto i = 0; i < list.count(); i++)
     {

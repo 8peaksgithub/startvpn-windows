@@ -8,7 +8,6 @@
 #include <QTimeZone>
 #include <QRegularExpression>
 #include <QApplication>
-#include <QDesktopWidget>
 
 #ifdef Q_OS_WIN
 #include <wbemidl.h>
