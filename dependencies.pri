@@ -8,7 +8,9 @@ win32 {
 
         win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibgmp.dll -llibgnutls.dll -llibhogweed.dll -llibiconv.dll -llibidn2.dll -lliblz4.dll -lliblzma.dll
         win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibspdlog -llibstoken.dll -llibunistring.dll -llibxml2.dll -llibz.dll -llibnettle.dll -llibopenconnect.dll -llibp11-kit.dll
-        win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibqtsingleapplication -llibproxy.dll
+        # TODO: Re-enable when Qt 6 compatible version is available
+        # win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibqtsingleapplication
+        win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibproxy.dll
         win32: LIBS += -lws2_32 -lwbemuuid -lole32 -loleaut32
 
     } else {
@@ -20,7 +22,9 @@ win32 {
 
         win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibgmp.dll -llibgnutls.dll -llibhogweed.dll -llibiconv.dll -llibidn2.dll -lliblz4.dll -lliblzma.dll
         win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibspdlog -llibstoken.dll -llibunistring.dll -llibxml2.dll -llibz.dll -llibnettle.dll -llibopenconnect.dll -llibp11-kit.dll
-        win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibqtsingleapplication -llibproxy.dll
+        # TODO: Re-enable when Qt 6 compatible version is available
+        # win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibqtsingleapplication
+        win32: LIBS += -L$$PWD/openconnect/windows/lib/ -llibproxy.dll
         win32: LIBS += -lws2_32 -lwbemuuid -lole32 -loleaut32
 
     }

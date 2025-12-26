@@ -6,7 +6,8 @@
 #include <QMenu>
 #include <QAction>
 #include<QMessageBox>
-#include <QtSingleApplication>
+// TODO: Re-enable single instance with Qt 6 compatible solution
+// #include <QtSingleApplication>
 
 #ifdef __MACH__
 #include <Security/Security.h>
@@ -52,14 +53,17 @@ int main(int argc, char *argv[])
 
 #if defined(Q_OS_MACOS) && defined(PROJ_ADMIN_PRIV_ELEVATION)
     /* Re-launching with root privs on OS X needs Qt to allow setsuid */
-    QtSingleApplication::setSetuidAllowed(true);
+    // TODO: Re-enable when single instance is restored
+    // QtSingleApplication::setSetuidAllowed(true);
+    QApplication::setSetuidAllowed(true);
 #endif
 
-    QtSingleApplication a(argc, argv);
-    if (a.isRunning()) {
-        a.sendMessage("Wake up!");
-        return 0;
-    }
+    QApplication a(argc, argv);
+    // TODO: Re-enable single instance check when Qt 6 compatible solution is available
+    // if (a.isRunning()) {
+    //     a.sendMessage("Wake up!");
+    //     return 0;
+    // }
     a.setQuitOnLastWindowClosed(false);
 #if defined(Q_OS_MACOS) && defined(PROJ_ADMIN_PRIV_ELEVATION)
     if (geteuid() != 0) {
@@ -78,12 +82,13 @@ int main(int argc, char *argv[])
 
     qRegisterMetaType<Start::OpenConnectConnection::Status>("Status");
     MainWindow w;
-    QObject::connect(&a, &QtSingleApplication::messageReceived,
-                     [&w](const QString&) {
-                         w.show();
-                     });
+    // TODO: Re-enable when single instance is restored
+    // QObject::connect(&a, &QtSingleApplication::messageReceived,
+    //                  [&w](const QString&) {
+    //                      w.show();
+    //                  });
 
-    a.setActivationWindow(&w);
+    // a.setActivationWindow(&w);
     w.setFixedSize(850, 620);
     w.show();
     return a.exec();
