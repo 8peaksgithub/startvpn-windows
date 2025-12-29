@@ -17,6 +17,7 @@
 #include <QtCore>
 #include <common/common.h>
 #include "common/config.h"
+#include "common/logger.h"
 #include <QString>
 #include <QSize>
 #include <core/openconnectconnection.h>
@@ -46,7 +47,9 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow),
-      m_state(0)
+      m_state(0),
+      manager(nullptr),
+      m_networkManager(nullptr)
 {
 
     ui->setupUi(this);
@@ -63,18 +66,18 @@ MainWindow::MainWindow(QWidget *parent)
     ui->treeWidget->QAbstractScrollArea::setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
     ui->treeWidget->QAbstractScrollArea::setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff ) ;
 
-    QPixmap *p=new QPixmap(":/logo/resources/user icon.png");
-    QPixmap userLogo(p->scaled ( 10,15, Qt::IgnoreAspectRatio, Qt::SmoothTransformation ));
+    QPixmap userIconPixmap(":/logo/resources/user icon.png");
+    QPixmap userLogo = userIconPixmap.scaled(10, 15, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
     ui->lblUser->setPixmap(userLogo);
     ui->lblUser->setStyleSheet("margin:12px;border:none;");
 
-    QPixmap *password=new QPixmap(":/logo/resources/password.png");
-    QPixmap pass(password->scaled ( 10,15, Qt::IgnoreAspectRatio, Qt::SmoothTransformation ));
+    QPixmap passwordPixmap(":/logo/resources/password.png");
+    QPixmap pass = passwordPixmap.scaled(10, 15, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
     ui->lblpassword->setPixmap(pass);
     ui->lblpassword->setStyleSheet("margin:12px;border:none;");
 
-    QPixmap *userEmail=new QPixmap(":/logo/resources/email.png");
-    QPixmap email(userEmail->scaled ( 18,12, Qt::IgnoreAspectRatio, Qt::SmoothTransformation ));
+    QPixmap userEmailPixmap(":/logo/resources/email.png");
+    QPixmap email = userEmailPixmap.scaled(18, 12, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 
 
     ui->lblSignupUser->setPixmap(email);
@@ -347,7 +350,9 @@ void MainWindow::btnEmailVerification_clicked() // regitation verifaction & emai
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyPeer);
     request.setSslConfiguration(sslConfig);
     #endif
-    manager = new QNetworkAccessManager;
+    if (!manager) {
+        manager = new QNetworkAccessManager(this);
+    }
     auto reply = manager->post(request, requestData.query(QUrl::FullyEncoded).toUtf8());
 
 
@@ -402,7 +407,9 @@ void MainWindow::btnSendEmail_clicked()
 
     QNetworkRequest request(QUrl(base_url+"/reset-password-token-request"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    manager = new QNetworkAccessManager;
+    if (!manager) {
+        manager = new QNetworkAccessManager(this);
+    }
     auto reply = manager->post(request, requestData.query(QUrl::FullyEncoded).toUtf8());
 
     QEventLoop eventLoop;
@@ -461,7 +468,9 @@ void MainWindow::btnLogin_clicked()
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyPeer);
     request.setSslConfiguration(sslConfig);
     #endif
-    manager = new QNetworkAccessManager;
+    if (!manager) {
+        manager = new QNetworkAccessManager(this);
+    }
     auto greply = manager->get(request);
     if(greply->error() != QNetworkReply::NoError)
     {
@@ -559,6 +568,15 @@ void MainWindow::btnConnect_clicked()
 {
     ui->btnConnect->setEnabled(false);
     qDebug()<<"btnconnect button click..";
+    
+    // Validate connection state
+    if(m_state == 1 || m_state == 2) {
+        QString msg = "Already connecting or connected. Please wait or disconnect first.";
+        customMessage(msg);
+        ui->btnConnect->setEnabled(true);
+        return;
+    }
+    
     int active_server = Start::Common::globalConfig()->activeServerIndex();
     qDebug()<<active_server;
     int ip_id =  info->getCurrentipID();
@@ -586,6 +604,16 @@ void MainWindow::btnConnect_clicked()
         QString msg = "Unsupported server protocol. Please contact support.";
         customMessage(msg);
         ui->btnConnect->setEnabled(true);
+        return;
+    }
+    
+    // Validate credentials
+    if(Start::Common::globalConnection()->username().isEmpty() || 
+       Start::Common::globalConnection()->password().isEmpty()) {
+        QString msg = "Invalid credentials. Please log in again.";
+        customMessage(msg);
+        ui->btnConnect->setEnabled(true);
+        btnLogout_clicked();
         return;
     }
     
@@ -648,9 +676,11 @@ void MainWindow::btnSubmitEmailVerificationCode_clicked()
 
     QNetworkRequest request(QUrl(base_url+"/token-verification"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    manager = new QNetworkAccessManager;
+    if (!m_networkManager) {
+        m_networkManager = new QNetworkAccessManager(this);
+    }
 
-    auto reply = manager->post(request, requestData.query(QUrl::FullyEncoded).toUtf8());
+    auto reply = m_networkManager->post(request, requestData.query(QUrl::FullyEncoded).toUtf8());
 
     QEventLoop eventLoop;
 
@@ -702,7 +732,9 @@ void MainWindow::on_btnResendCode_clicked()
 
     QNetworkRequest request(QUrl(base_url+"/resend-email-verification"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    manager = new QNetworkAccessManager;
+    if (!manager) {
+        manager = new QNetworkAccessManager(this);
+    }
 
     auto reply = manager->post(request, requestData.query(QUrl::FullyEncoded).toUtf8());
 
@@ -1059,15 +1091,32 @@ void MainWindow::setSelectedLocation(int &index)
 
 void MainWindow::on_btnDisconnect_clicked()
 {
-
-
-    Start::Common::globalConnection()->disconnect();
+    qDebug() << "Disconnect button clicked. Current state:" << m_state;
+    
+    // Prevent double disconnect
+    if(m_state == 0) {
+        qDebug() << "Already disconnected";
+        return;
+    }
+    
+    // Set disconnecting state
+    ui->lbldefultCountry->setText("Disconnecting...");
     ui->stackedWidget_2->setCurrentIndex(1);
+    
+    // Perform disconnect
+    Start::Common::globalConnection()->disconnect();
+    
+    // Reset server selection
     Start::Common::globalConfig()->setActiveServerIndex(0);
     Start::Common::globalConfig()->save();
     int defult = 0;
     setSelectedLocation(defult);
-
+    
+    // Clear connection info
+    info->isConnected = false;
+    m_state = 0;
+    
+    qDebug() << "Disconnect completed";
 }
 
 void MainWindow::on_lineEdit_textChanged(const QString &text)
@@ -1117,6 +1166,22 @@ void MainWindow::onStatusChanged(Start::OpenConnectConnection::Status status)
     {
         m_state = 1;
         ui->lbldefultCountry->setText("Connecting...");
+        
+        // Enable kill switch when connection starts
+        if(Start::Common::globalConnection()->enableKillSwitch()) {
+            Logger::instance().addMessage("Kill switch enabled");
+        } else {
+            Logger::instance().addMessage("Warning: Failed to enable kill switch");
+        }
+        
+        // Disable kill switch when disconnected
+        if(Start::Common::globalConnection()->disableKillSwitch()) {
+            Logger::instance().addMessage("Kill switch disabled");
+        } else {
+            Logger::instance().addMessage("Warning: Failed to disable kill switch");
+        }
+        
+        
         update();
     }
     if(opcState == Start::OpenConnectConnection::IDLE)
@@ -1142,6 +1207,13 @@ void MainWindow::onStatusChanged(Start::OpenConnectConnection::Status status)
                 }
             });
         }
+        
+        // Allow VPN traffic through kill switch
+        if(Start::Common::globalConnection()->killSwitch()) {
+            Start::Common::globalConnection()->killSwitch()->allowVPNInterface("VPN");
+            Logger::instance().addMessage("VPN interface allowed through kill switch");
+        }
+        
         update();
     }
     if(opcState == Start::OpenConnectConnection::CONNECTED)
@@ -1577,7 +1649,9 @@ void MainWindow::on_btnDeleteAccount_clicked()
 
     QNetworkRequest request(QUrl(base_url+"/remove-user"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    manager = new QNetworkAccessManager;
+    if (!manager) {
+        manager = new QNetworkAccessManager(this);
+    }
 
     auto reply = manager->post(request, requestData.query(QUrl::FullyEncoded).toUtf8());
 

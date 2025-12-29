@@ -88,6 +88,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
     QNetworkAccessManager *manager;
+    QNetworkAccessManager *m_networkManager;
     QString userEmail;
     QTimer* timer;
     QTimer* serverRefreshTimer;

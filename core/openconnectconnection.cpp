@@ -26,8 +26,10 @@ OpenConnectConnection::OpenConnectConnection()
     , m_status(IDLE)
     , form_attempt(0)
     , form_pass_attempt(0)
+    , m_killSwitch(nullptr)
 {
     this->cmd_fd = INVALID_SOCKET;
+    m_killSwitch = new KillSwitch(this);
     QObject::connect(this,&OpenConnectConnection::statusChanged,this, &OpenConnectConnection::onStatusChanged, Qt::QueuedConnection);
 }
 
@@ -193,8 +195,11 @@ OpenConnectConnection::ConnectionError OpenConnectConnection::connect()
         bool success = runner->connect(open_config, m_username, m_password);
         if (success) {
             Logger::instance().addMessage("OpenVPN Connect Success");
+            emit statusChanged(CONNECTING);
         }else{
             Logger::instance().addMessage("OpenVPN Connect Failed");
+            emit statusChanged(IDLE);
+            return VPN_INIT_FAILED;
         }
     }
 
@@ -203,6 +208,14 @@ OpenConnectConnection::ConnectionError OpenConnectConnection::connect()
 
 void OpenConnectConnection::disconnect()
 {
+    qDebug() << "OpenConnectConnection::disconnect() called";
+    
+    // Prevent double disconnect
+    if(m_status == IDLE) {
+        qDebug() << "Already in IDLE state, skipping disconnect";
+        return;
+    }
+    
     // Clear sensitive data from memory
     if(!m_username.isEmpty()) {
         m_username.fill('\0');
@@ -229,11 +242,31 @@ void OpenConnectConnection::disconnect()
         } else {
             emit statusChanged(IDLE);
         }
+        
+        // Wait for future to finish with timeout
+        if (this->futureWatcher.isRunning()) {
+            int timeout = 5000; // 5 second timeout
+            int elapsed = 0;
+            while (this->futureWatcher.isRunning() && elapsed < timeout) {
+                ms_sleep(100);
+                elapsed += 100;
+            }
+            if(this->futureWatcher.isRunning()) {
+                Logger::instance().addMessage("Warning: VPN thread did not finish in time");
+            }
+        }
+        
     }else if(m_server_type == 1){
         // Open VPN
         qDebug() << "Disconnecting OpenVPN";
+        
+        if(!runner) {
+            qDebug() << "Runner is null, skipping OpenVPN cleanup";
+            emit statusChanged(IDLE);
+            return;
+        }
 
-        if (runner->m_managementServer->isListening())
+        if (runner->m_managementServer && runner->m_managementServer->isListening())
             runner->m_managementServer->close();
         if (runner->m_managementConnection && runner->m_managementConnection->isOpen())
             runner->m_managementConnection->abort();
@@ -243,13 +276,17 @@ void OpenConnectConnection::disconnect()
             emit statusChanged(IDLE);
         }
 
-        if(runner->m_process->state() == QProcess::Running){
-            runner->m_process->close();
+        if(runner->m_process && runner->m_process->state() == QProcess::Running){
+            runner->m_process->terminate();
+            if(!runner->m_process->waitForFinished(3000)) {
+                qDebug() << "Process did not terminate, killing...";
+                runner->m_process->kill();
+                runner->m_process->waitForFinished(1000);
+            }
         }
-
-//        if (runner->m_process->state() == QProcess::NotRunning)
-//            deleteLater();
     }
+    
+    qDebug() << "OpenConnectConnection::disconnect() completed";
 }
 
 void OpenConnectConnection::onStatusChanged(OpenConnectConnection::Status status)
@@ -431,6 +468,29 @@ OpenConnectConnection::Status OpenConnectConnection::status() const
 void OpenConnectConnection::setStatus(const Status &status)
 {
     m_status = status;
+}
+
+KillSwitch* OpenConnectConnection::killSwitch() const
+{
+    return m_killSwitch;
+}
+
+bool OpenConnectConnection::enableKillSwitch()
+{
+    if (!m_killSwitch) {
+        Logger::instance().addMessage("Kill switch not initialized");
+        return false;
+    }
+    return m_killSwitch->enable();
+}
+
+bool OpenConnectConnection::disableKillSwitch()
+{
+    if (!m_killSwitch) {
+        Logger::instance().addMessage("Kill switch not initialized");
+        return false;
+    }
+    return m_killSwitch->disable();
 }
 
 } // namespace Symlex

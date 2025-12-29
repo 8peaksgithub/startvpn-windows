@@ -5,7 +5,8 @@ HEADERS += \
     $$PWD/keypair.h \
     $$PWD/openconnectconnection.h \
     $$PWD/openconnectserver.h \
-    $$PWD/openvpnrunner.h
+    $$PWD/openvpnrunner.h \
+    $$PWD/killswitch.h
 
 SOURCES += \
     $$PWD/cert.cpp \
@@ -14,4 +15,5 @@ SOURCES += \
     $$PWD/keypair.cpp \
     $$PWD/openconnectconnection.cpp \
     $$PWD/openconnectserver.cpp \
-    $$PWD/openvpnrunner.cpp
+    $$PWD/openvpnrunner.cpp \
+    $$PWD/killswitch.cpp

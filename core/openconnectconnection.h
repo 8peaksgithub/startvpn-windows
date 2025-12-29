@@ -10,6 +10,7 @@
 #include "common/openconnectapi.h"
 #include <memory>
 #include "openvpnrunner.h"
+#include "killswitch.h"
 
 struct openconnect_info;
 
@@ -79,6 +80,10 @@ public:
 
     void setOpenConfig(const QString config, const QString address);
 
+    KillSwitch* killSwitch() const;
+    bool enableKillSwitch();
+    bool disableKillSwitch();
+
 signals:
     void statusChanged(Status status); // Emitted from thread. Connect async
     void statsChanged(uint64_t tx, uint64_t rx); // Emitted from thread. Connect async
@@ -93,6 +98,7 @@ public:
     QString open_config;
     int m_server_type;
     OpenVpnRunner* runner;
+    KillSwitch* m_killSwitch;
 
 
     // Stats
