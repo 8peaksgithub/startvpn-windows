@@ -1169,16 +1169,16 @@ void MainWindow::onStatusChanged(Start::OpenConnectConnection::Status status)
         
         // Enable kill switch when connection starts
         if(Start::Common::globalConnection()->enableKillSwitch()) {
-            Logger::instance().addMessage("Kill switch enabled");
+            Start::Logger::instance().addMessage("Kill switch enabled");
         } else {
-            Logger::instance().addMessage("Warning: Failed to enable kill switch");
+            Start::Logger::instance().addMessage("Warning: Failed to enable kill switch");
         }
         
         // Disable kill switch when disconnected
         if(Start::Common::globalConnection()->disableKillSwitch()) {
-            Logger::instance().addMessage("Kill switch disabled");
+            Start::Logger::instance().addMessage("Kill switch disabled");
         } else {
-            Logger::instance().addMessage("Warning: Failed to disable kill switch");
+            Start::Logger::instance().addMessage("Warning: Failed to disable kill switch");
         }
         
         
@@ -1211,7 +1211,7 @@ void MainWindow::onStatusChanged(Start::OpenConnectConnection::Status status)
         // Allow VPN traffic through kill switch
         if(Start::Common::globalConnection()->killSwitch()) {
             Start::Common::globalConnection()->killSwitch()->allowVPNInterface("VPN");
-            Logger::instance().addMessage("VPN interface allowed through kill switch");
+            Start::Logger::instance().addMessage("VPN interface allowed through kill switch");
         }
         
         update();
