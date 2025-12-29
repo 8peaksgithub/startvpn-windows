@@ -100,15 +100,30 @@ jobs:
         echo "Commit: ${{ github.sha }}" >> deploy\StartVPN\VERSION.txt
         echo "Branch: ${{ github.ref_name }}" >> deploy\StartVPN\VERSION.txt
         
+    - name: Install NSIS
+      run: |
+        choco install nsis -y
+        
+    - name: Create installer
+      run: |
+        & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+        
     - name: Create ZIP archive
       run: |
         cd deploy
         Compress-Archive -Path StartVPN -DestinationPath StartVPN-Windows-x64.zip
         
-    - name: Upload artifact
+    - name: Upload installer artifact
       uses: actions/upload-artifact@v4
       with:
-        name: StartVPN-Windows-x64
+        name: StartVPN-Installer
+        path: StartVPN-Setup-*.exe
+        retention-days: 30
+        
+    - name: Upload portable artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StartVPN-Portable
         path: deploy/StartVPN-Windows-x64.zip
         retention-days: 30
         
@@ -116,7 +131,9 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
-        files: deploy/StartVPN-Windows-x64.zip
+        files: |
+          StartVPN-Setup-*.exe
+          deploy/StartVPN-Windows-x64.zip
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
