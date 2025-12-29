@@ -186,7 +186,7 @@ void MainWindow::expandItem(const QModelIndex &index)
         QString Country;
         QString ServerIPName;
 
-        QSettings settings("startvpn", "Kolpolok Limited");
+        QSettings settings("startvpn", "StartVPN");
         auto bundils =  settings.value("IPBundle", "").toString();
         QJsonDocument doc = QJsonDocument::fromJson(bundils.toUtf8());
         QJsonArray serverArray = doc.array();
@@ -550,7 +550,7 @@ void MainWindow::btnLogout_clicked()
     ui->password->setText("");
     ui->stackedWidget->setCurrentIndex(0);
     ui->stackedWidget_2->setCurrentIndex(0);
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     settings.clear();
     info->resetUserInfo();
     resetBundil();
@@ -813,7 +813,7 @@ void MainWindow::refreshServerList()
                 // Update server list
                 QJsonDocument array;
                 array.setArray(rootObject.value("ip_bundle").toArray());
-                QSettings settings("startvpn", "Kolpolok Limited");
+                QSettings settings("startvpn", "StartVPN");
                 settings.setValue("IPBundle", array.toJson());
                 info->setIPBundle(array.toJson());
                 
@@ -871,7 +871,7 @@ void MainWindow::saveServer(QByteArray &res ,QString &username, QString &passwor
 
             QJsonDocument array;
             array.setArray(response.value("ip_bundle").toArray());
-            QSettings settings("startvpn", "Kolpolok Limited");
+            QSettings settings("startvpn", "StartVPN");
             settings.setValue("IPBundle", array.toJson());
 
             info->setIPBundle(array.toJson());
@@ -893,7 +893,7 @@ void MainWindow::createServerTreeWidget()
 {
 
     qDebug()<<"createServer treewidget how many time count will be know...";
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     auto bundils =  settings.value("IPBundle", "").toString();
     QJsonDocument doc = QJsonDocument::fromJson(bundils.toUtf8());
     bool TypeOfUser = true;
@@ -1007,7 +1007,7 @@ void MainWindow::addChildServer(QTreeWidgetItem *parent, QString name, bool is_l
 void MainWindow::setSelectedLocation(int &index)
 {
 
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     auto bundils =  settings.value("IPBundle", "").toString();
     QJsonDocument doc = QJsonDocument::fromJson(bundils.toUtf8());
     bool flag = true;
@@ -1123,7 +1123,7 @@ void MainWindow::on_lineEdit_textChanged(const QString &text)
 {
     ui->treeWidget->clear();
     map.clear();
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     auto bundils =  settings.value("IPBundle", "").toString();
     QJsonDocument doc = QJsonDocument::fromJson(bundils.toUtf8());
     QJsonArray serverArray = doc.array();
@@ -1300,7 +1300,7 @@ void MainWindow::resetBundil()
 void MainWindow::createBundil(QString name, QString key,int countryCode,QString text){
     QString country = name;
     QString nameIP = "";
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     auto bundils =  settings.value("IPBundle", "").toString();
     QJsonDocument doc = QJsonDocument::fromJson(bundils.toUtf8());
     bool TypeOfUser = true;
@@ -1350,7 +1350,7 @@ void MainWindow::createBundil(QString name, QString key,int countryCode,QString 
 }
 bool MainWindow::bundileIsExist(QString Ikey,QString text)
 {
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     auto bundils =  settings.value("IPBundle", "").toString();
     QJsonDocument doc = QJsonDocument::fromJson(bundils.toUtf8());
     QJsonArray serverArray = doc.array();
@@ -1400,7 +1400,7 @@ void MainWindow::createStreamingBundil(QString text)
 
 void MainWindow::saveBundil()
 {
-    QSettings settings("connectedIPBundil", "Kolpolok Limited");
+    QSettings settings("connectedIPBundil", "StartVPN");
     settings.setValue("ipID", ipID);
     settings.setValue("config", config);
     settings.setValue("type", type);
@@ -1410,7 +1410,7 @@ void MainWindow::saveBundil()
 
 void MainWindow::loadBundil()
 {
-    QSettings settings("connectedIPBundil", "Kolpolok Limited");
+    QSettings settings("connectedIPBundil", "StartVPN");
     this->ipID = settings.value("ipID", ipID).toInt();
     this->config = settings.value("config", config).toString();
     this->type = settings.value("type", type).toInt();

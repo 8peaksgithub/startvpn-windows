@@ -93,7 +93,7 @@ void UserInformation::setCurrentIPBundle(int &ipID, QString &config, int &type, 
     this->type = type;
     this->ip = ip;
     this->ipName = ipName;
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     settings.setValue("ipID", ipID);
     settings.setValue("config", config);
     settings.setValue("type", type);
@@ -104,7 +104,7 @@ void UserInformation::setCurrentIPBundle(int &ipID, QString &config, int &type, 
 
 void UserInformation::loadIpBundle()
 {
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     this->ipID = settings.value("ipID", ipID).toInt();
     this->config = settings.value("config", config).toString();
     this->type = settings.value("type", type).toInt();

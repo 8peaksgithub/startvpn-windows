@@ -22,7 +22,7 @@ Config::Config()
 
 void Config::load()
 {
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     m_cachedUsername = settings.value(USERNAME_KEY,QString()).toString();
     m_cachedPassword = settings.value(PASSWORD_KEY,QString()).toString();
     m_activeServerIndex = settings.value(ACTIVE_SERVER_KEY,0).toInt();
@@ -34,7 +34,7 @@ void Config::load()
 
 void Config::save()
 {
-    QSettings settings("startvpn", "Kolpolok Limited");
+    QSettings settings("startvpn", "StartVPN");
     settings.setValue(USERNAME_KEY,m_cachedUsername);
     settings.setValue(PASSWORD_KEY,m_cachedPassword);
     settings.setValue(ACTIVE_SERVER_KEY,m_activeServerIndex);

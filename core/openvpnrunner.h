@@ -1,6 +1,6 @@
 #ifndef OPENVPNRUNNER_H
 /*
- * Copyright (C) 2022 Kolpolok Limited
+ * Copyright (C) 2022 StartVPN
  * Developed By MSGJewel
  */
 

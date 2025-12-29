@@ -517,7 +517,7 @@ QString Common::appVersion()
 
 QString Common::appOrganisation()
 {
-    return "Kolpolok";
+    return "StartVPN";
 }
 
 bool Common::is_url(const QString &str)
