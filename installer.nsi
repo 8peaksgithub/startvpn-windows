@@ -44,9 +44,28 @@ ShowInstDetails show
 ShowUnInstDetails show
 RequestExecutionLevel admin
 
+; Function to check and close running processes
+Function .onInit
+  ; Verify admin rights
+  UserInfo::GetAccountType
+  Pop $R0
+  ${If} $R0 != "admin"
+    MessageBox MB_OK|MB_ICONSTOP "Administrator privileges required!$\n$\nPlease right-click the installer and select 'Run as administrator'."
+    Abort
+  ${EndIf}
+  
+  ; Try to close StartVPN if running
+  nsExec::Exec 'taskkill /F /IM StartVPN.exe /T'
+  Sleep 1000
+FunctionEnd
+
 Section "MainSection" SEC01
+  ; Ensure the process is stopped before overwriting files
+  nsExec::Exec 'taskkill /F /IM StartVPN.exe /T'
+  Sleep 500
+  
   SetOutPath "$INSTDIR"
-  SetOverwrite on
+  SetOverwrite ifnewer
   
   ; Copy all files from deploy/StartVPN
   File /r "deploy\StartVPN\*.*"
@@ -80,11 +99,19 @@ Function un.onUninstSuccess
 FunctionEnd
 
 Function un.onInit
+  ; Try to close StartVPN before uninstall
+  nsExec::Exec 'taskkill /F /IM StartVPN.exe /T'
+  Sleep 1000
+  
   MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "Are you sure you want to completely remove $(^Name) and all of its components?" IDYES +2
   Abort
 FunctionEnd
 
 Section Uninstall
+  ; Force close any running instances
+  nsExec::Exec 'taskkill /F /IM StartVPN.exe /T'
+  Sleep 500
+  
   Delete "$INSTDIR\${PRODUCT_NAME}.url"
   Delete "$INSTDIR\uninst.exe"
   
